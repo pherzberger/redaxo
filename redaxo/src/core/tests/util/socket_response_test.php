@@ -80,4 +80,66 @@ class rex_socket_response_test extends TestCase
         static::assertSame($body, fread($temp, 1024));
         fclose($temp);
     }
+
+    public function testGetBodyWithEncoding()
+    {
+        $body = "This is the\r\noriginal content";
+
+
+        static::assertSame($body, $this->createResponseWithEncoding('gzip',
+            zlib_encode($body, ZLIB_ENCODING_GZIP))->getBody());
+
+        static::assertSame($body, $this->createResponseWithEncoding('deflate',
+            zlib_encode($body, ZLIB_ENCODING_DEFLATE))->getBody());
+
+        static::assertSame(
+            $body,
+            $this->createResponseWithEncoding(
+                'gzip, deflate',
+                zlib_encode(zlib_encode($body, ZLIB_ENCODING_GZIP), ZLIB_ENCODING_DEFLATE)
+            )->getBody()
+        );
+        static::assertSame(
+            $body,
+            $this->createResponseWithEncoding(
+                'deflate, gzip',
+                zlib_encode(zlib_encode($body, ZLIB_ENCODING_DEFLATE), ZLIB_ENCODING_GZIP)
+            )->getBody()
+        );
+    }
+
+    public function testGetBodyUnsupportedEncoding()
+    {
+        static::expectException(rex_exception::class);
+        static::expectExceptionMessage('br is an unsupported content encoding.');
+
+        $this->getResponse(
+            sprintf("HTTP/1.1 200 OK\r\nContent-Encoding: %s\r\n\r\n%s", 'br', 'test')
+        )->getBody();
+    }
+
+    public function testEncodingHeader()
+    {
+        static::assertIsArray($this->getResponse("HTTP/1.1 200 OK\r\nKey: Value\r\n\r\nTest")
+            ->getContentEncodings());
+
+        static::assertCount(0, $this->getResponse("HTTP/1.1 200 OK\r\nKey: Value\r\n\r\nTest")
+            ->getContentEncodings());
+
+        static::assertIsArray($this->createResponseWithEncoding('gzip, deflate', 'test')
+            ->getContentEncodings());
+
+        static::assertSame(['gzip', 'deflate'], $this->createResponseWithEncoding('gzip, deflate', 'test')
+            ->getContentEncodings());
+
+        static::assertSame(['gzip'], $this->createResponseWithEncoding('gzip', 'test')
+            ->getContentEncodings());
+    }
+
+    private function createResponseWithEncoding(string $encoding, string $body)
+    {
+        return $this->getResponse(
+            sprintf("HTTP/1.1 200 OK\r\nContent-Encoding: %s\r\n\r\n%s", $encoding, $body)
+        );
+    }
 }
