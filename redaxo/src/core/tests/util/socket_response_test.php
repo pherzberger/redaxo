@@ -118,6 +118,16 @@ class rex_socket_response_test extends TestCase
         )->getBody();
     }
 
+    public function testGetBodyInvalidEncodingValue()
+    {
+        static::expectException(rex_exception::class);
+        static::expectExceptionMessage('bad is an unsupported content encoding.');
+
+        $this->getResponse(
+            sprintf("HTTP/1.1 200 OK\r\nContent-Encoding: %s\r\n\r\n%s", 'b#Ad!', 'test')
+        )->getBody();
+    }
+
     public function testEncodingHeader()
     {
         static::assertIsArray($this->getResponse("HTTP/1.1 200 OK\r\nKey: Value\r\n\r\nTest")

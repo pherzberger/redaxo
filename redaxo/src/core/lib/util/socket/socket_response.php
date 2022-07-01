@@ -271,7 +271,8 @@ class rex_socket_response
         }
 
         throw new rex_exception(
-            sprintf('%s is an unsupported content encoding.', $encoding)
+            sprintf('%s is an unsupported content encoding.',
+                preg_replace('/\W+/', '', $encoding))
         );
 
     }
