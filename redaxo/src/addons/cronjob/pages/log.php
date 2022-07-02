@@ -14,6 +14,16 @@ $success = '';
 $message = '';
 $logFile = rex_path::log('cronjob.log');
 
+// Prepare values for log entry count selection
+$ENTRIES_PER_PAGE_MAX_VALUE = 180;
+$ENTRIES_PER_PAGE_STEP = 30;
+$entriesPerPage = rex_request('log_entries', 'int', $ENTRIES_PER_PAGE_STEP);
+
+if ($entriesPerPage < 1 || $entriesPerPage > $ENTRIES_PER_PAGE_MAX_VALUE) {
+    $entriesPerPage = $ENTRIES_PER_PAGE_STEP;
+}
+
+
 if ('cronjob_delLog' == $func) {
     if (rex_log_file::delete($logFile)) {
         $success = rex_i18n::msg('syslog_deleted');
@@ -47,7 +57,7 @@ $formElements = [];
 $file = new rex_log_file($logFile);
 
 /** @var rex_log_entry $entry */
-foreach (new LimitIterator($file, 0, 30) as $entry) {
+foreach (new LimitIterator($file, 0, $entriesPerPage) as $entry) {
     $data = $entry->getData();
     $class = 'ERROR' == trim($data[0]) ? 'rex-state-error' : 'rex-state-success';
     if ('--' == $data[1]) {
@@ -94,6 +104,26 @@ $content = '
         <input type="hidden" name="func" value="cronjob_delLog" />
         ' . $content . '
     </form>';
+
+// Entry count selection
+$entryCountSelectionContent = '
+    <form action="' . rex_url::currentBackendPage() . '" id="log-paginator-form" method="post">
+        <select name="log_entries" onchange="document.getElementById(\'log-paginator-form\').submit()">';
+
+        for ($i = $ENTRIES_PER_PAGE_STEP; $i <= $ENTRIES_PER_PAGE_MAX_VALUE; $i += $ENTRIES_PER_PAGE_STEP) {
+            $entryCountSelectionContent .= sprintf(
+                '<option value="%1$s"%2$s>%1$s</option>',
+                $i,
+                $i == $entriesPerPage ? ' selected="selected"' : ''
+            );
+        }
+
+$entryCountSelectionContent .= '</select>
+        <input type="submit" value="' . rex_i18n::msg('update') . '" />
+    </form>';
+
+
+$content = $entryCountSelectionContent . $content;
 
 echo $message;
 echo $content;
