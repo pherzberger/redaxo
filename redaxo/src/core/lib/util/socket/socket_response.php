@@ -169,18 +169,16 @@ class rex_socket_response
 
     /**
      * Returns an array with all applied content encodings.
-     *
-     * @return array
      */
     public function getContentEncodings(): array
     {
         $contenEncodingHeader = $this->getHeader('Content-Encoding');
 
-        if (is_null($contenEncodingHeader)) {
+        if (null === $contenEncodingHeader) {
             return [];
         }
 
-        return array_map(function($encoding) {
+        return array_map(static function ($encoding) {
             return trim(strtolower($encoding));
         }, explode(',', $contenEncodingHeader));
     }
@@ -239,25 +237,22 @@ class rex_socket_response
             // To decode the order has to be reversed.
             $contentEncodings = array_reverse($contentEncodings);
             foreach ($contentEncodings as $contentEncoding) {
+                if (!is_string($contentEncoding)) {
+                    continue;
+                }
                 $this->body = $this->decodeContentWithEncoding($contentEncoding, $this->body);
             }
         }
 
         return $this->body;
-
     }
 
     /**
      * Decodes the content with the given encoding.
-     * Supported encodings: gzip, deflate
-     *
-     * @param string $encoding
-     * @param string $content
-     * @return void
+     * Supported encodings: gzip, deflate.
      */
     protected function decodeContentWithEncoding(string $encoding, string $content): string
     {
-
         // Check if the required zlib library is available.
         if (!extension_loaded('zlib')) {
             throw new rex_exception('Zlib extension is not loaded.');
@@ -270,14 +265,8 @@ class rex_socket_response
                 return zlib_decode($content);
         }
 
-        throw new rex_exception(
-            sprintf('%s is an unsupported content encoding.',
-                preg_replace('/\W+/', '', $encoding))
-        );
-
+        throw new rex_exception(sprintf('%s is an unsupported content encoding.', preg_replace('/\W+/', '', $encoding)));
     }
-
-
 
     /**
      * Writes the body to the given resource.
